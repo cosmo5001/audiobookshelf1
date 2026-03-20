@@ -13,6 +13,8 @@ class AutoImportManager {
   constructor() {
     /** @type {Map<string, Watcher>} */
     this.autoImportWatchers = new Map()
+    /** @type {Map<string, NodeJS.Timeout>} */
+    this.autoImportDebounceTimers = new Map()
   }
 
   /**
@@ -740,11 +742,22 @@ class AutoImportManager {
   async onFileAdded(library, filePath) {
     Logger.info(`[AutoImportManager] New item added to auto-import folder: "${filePath}"`)
     
-    try {
-      await this.scanAutoImportFolders(library, null)
-    } catch (error) {
-      Logger.error(`[AutoImportManager] Error scanning auto-import folders`, error)
+    // Clear existing debounce timer for this library if any
+    const existingTimer = this.autoImportDebounceTimers.get(library.id)
+    if (existingTimer) {
+      clearTimeout(existingTimer)
     }
+    
+    // Set a new debounce timer for 30 seconds
+    const timer = setTimeout(() => {
+      try {
+        this.scanAutoImportFolders(library, null)
+      } catch (error) {
+        Logger.error(`[AutoImportManager] Error scanning auto-import folders`, error)
+      }
+    }, 30000)
+    
+    this.autoImportDebounceTimers.set(library.id, timer)
   }
 
   /**
@@ -760,6 +773,12 @@ class AutoImportManager {
       }
     }
     this.autoImportWatchers.clear()
+    
+    // Clear all debounce timers
+    for (const [libraryId, timer] of this.autoImportDebounceTimers.entries()) {
+      clearTimeout(timer)
+    }
+    this.autoImportDebounceTimers.clear()
   }
 
   /**
@@ -776,6 +795,13 @@ class AutoImportManager {
         Logger.debug(`[AutoImportManager] Error closing watcher`)
       }
       this.autoImportWatchers.delete(libraryId)
+    }
+    
+    // Clear debounce timer for this library
+    const timer = this.autoImportDebounceTimers.get(libraryId)
+    if (timer) {
+      clearTimeout(timer)
+      this.autoImportDebounceTimers.delete(libraryId)
     }
   }
 }
