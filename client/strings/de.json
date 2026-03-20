@@ -1161,5 +1161,12 @@
   "TooltipLockChapter": "Kapitel sperren (Shift+Klick für mehrere)",
   "TooltipSubtractOneSecond": "1 Sekunde abziehen",
   "TooltipUnlockAllChapters": "Alle Kapitel freigeben",
-  "TooltipUnlockChapter": "Kapitel freigeben (Shift+Klick für mehrere)"
+  "TooltipUnlockChapter": "Kapitel freigeben (Shift+Klick für mehrere)",
+  "ButtonReorganizeFiles": "Reorganize Files",
+  "LabelToolsReorganizeFiles": "Reorganize Files",
+  "LabelToolsReorganizeFilesDescription": "Move all files to a directory structure based on item metadata (author/series/title for books, title for podcasts)",
+  "MessageBatchReorganizeStarted": "Reorganizing files for {0} items in background...",
+  "MessageBatchReorganizeSuccess": "{0} items reorganized successfully",
+  "MessageBatchReorganizePartial": "{0} items reorganized, {1} failed",
+  "LabelPreview": "Preview"
 }

@@ -9,7 +9,7 @@ const Database = require('../Database')
 const zipHelpers = require('../utils/zipHelpers')
 const { reqSupportsWebp } = require('../utils/index')
 const { ScanResult, AudioMimeType } = require('../utils/constants')
-const { getAudioMimeTypeFromExtname, encodeUriPath } = require('../utils/fileUtils')
+const { getAudioMimeTypeFromExtname, encodeUriPath, sanitizeFilename } = require('../utils/fileUtils')
 const LibraryItemScanner = require('../scanner/LibraryItemScanner')
 const AudioFileScanner = require('../scanner/AudioFileScanner')
 const Scanner = require('../scanner/Scanner')
@@ -487,6 +487,34 @@ class LibraryItemController {
 
     SocketAuthority.libraryItemEmitter('item_updated', req.libraryItem)
     res.json(req.libraryItem.toOldJSON())
+  }
+
+  /**
+   * POST /api/items/:id/reorganize-files
+   * Reorganize library item files into metadata-based directory structure
+   *
+   * @param {LibraryItemControllerRequest} req
+   * @param {Response} res
+   */
+  async reorganizeFiles(req, res) {
+    if (!req.user.canUpdate) {
+      Logger.warn(`[LibraryItemController] User "${req.user.username}" attempted to reorganize files without permission`)
+      return res.sendStatus(403)
+    }
+
+    try {
+      const result = await this.reorganizeFilesForItem(req.libraryItem)
+      
+      if (!result.success) {
+        return res.status(400).send(`Error: ${result.error}`)
+      }
+
+      Logger.info(`[LibraryItemController] reorganizeFiles completed successfully`)
+      res.json({ success: true })
+    } catch (error) {
+      Logger.error(`[LibraryItemController] reorganizeFiles error: ${error.message}`)
+      res.status(400).send(`Error: ${error.message}`)
+    }
   }
 
   /**
@@ -1163,6 +1191,202 @@ class LibraryItemController {
    * @param {Response} res
    * @param {NextFunction} next
    */
+
+  /**
+   * Helper method to reorganize a single item's files
+   * @param {import('../models/LibraryItem')} libraryItem
+   * @returns {Promise<{success: boolean, error?: string}>}
+   */
+  async reorganizeFilesForItem(libraryItem) {
+    try {
+      const itemId = libraryItem.id
+      const currentPath = libraryItem.path
+      const libraryId = libraryItem.libraryId
+      const isBook = libraryItem.isBook
+      const isPodcast = libraryItem.isPodcast
+
+      Logger.info(`[LibraryItemController] Reorganizing item ${itemId}`)
+
+      // Reload media with authors and series for books
+      let media = libraryItem.media
+      if (isBook) {
+        media = await libraryItem.getMedia({
+          include: [
+            {
+              model: Database.authorModel,
+              through: {
+                attributes: ['id', 'createdAt']
+              }
+            },
+            {
+              model: Database.seriesModel,
+              through: {
+                attributes: ['id', 'sequence', 'createdAt']
+              }
+            }
+          ],
+          order: [
+            [Database.authorModel, Database.bookAuthorModel, 'createdAt', 'ASC'],
+            [Database.seriesModel, 'bookSeries', 'createdAt', 'ASC']
+          ]
+        })
+      }
+
+      if (!media) {
+        return { success: false, error: 'Media not found' }
+      }
+
+      // Get library folder
+      const library = await Database.libraryModel.findByIdWithFolders(libraryId)
+      if (!library || !library.libraryFolders || !library.libraryFolders.length) {
+        return { success: false, error: 'Library not found' }
+      }
+
+      const libraryFolder = library.libraryFolders.find((f) => currentPath.startsWith(f.path))
+      if (!libraryFolder) {
+        return { success: false, error: 'Library folder not found' }
+      }
+
+      // Build new path
+      const parts = []
+      if (isPodcast) {
+        parts.push(media.title)
+      } else if (isBook) {
+        if (media.authorName) {
+          parts.push(media.authorName)
+        }
+        if (media.seriesName) {
+          parts.push(media.seriesName)
+        }
+        parts.push(media.title)
+      }
+
+      const sanitizedParts = parts.filter(Boolean).map((p) => sanitizeFilename(p))
+      const newPath = Path.join(libraryFolder.path, ...sanitizedParts)
+
+      Logger.info(`[LibraryItemController] Item path: ${currentPath} -> ${newPath}`)
+
+      // Move files if path is different
+      if (newPath !== currentPath) {
+        // Check current directory exists
+        const currentExists = await fs.pathExists(currentPath)
+        if (!currentExists) {
+          return { success: false, error: 'Current directory does not exist' }
+        }
+
+        // Check if target already exists with different item
+        const targetExists = await fs.pathExists(newPath)
+        if (targetExists) {
+          const existingItem = await Database.libraryItemModel.findOne({ where: { path: newPath } })
+          if (existingItem && existingItem.id !== itemId) {
+            return { success: false, error: 'Target directory already contains a different item' }
+          }
+        }
+
+        // Create target directory
+        await fs.ensureDir(newPath)
+
+        // Read and move files
+        const files = await fs.readdir(currentPath)
+        Logger.info(`[LibraryItemController] Moving ${files.length} files for item ${itemId}`)
+
+        for (const file of files) {
+          const src = Path.join(currentPath, file)
+          const dst = Path.join(newPath, file)
+          await fs.move(src, dst, { overwrite: true })
+        }
+
+        // Update database
+        await Database.libraryItemModel.update({ path: newPath }, { where: { id: itemId } })
+
+        // Clean up old directory
+        try {
+          const remaining = await fs.readdir(currentPath)
+          if (remaining.length === 0) {
+            await fs.remove(currentPath)
+            Logger.info(`[LibraryItemController] Removed empty old directory`)
+          }
+        } catch (err) {
+          Logger.warn(`[LibraryItemController] Could not remove old directory: ${err.message}`)
+        }
+      } else {
+        Logger.info(`[LibraryItemController] Paths are the same - no move needed for item ${itemId}`)
+      }
+
+      return { success: true }
+    } catch (error) {
+      Logger.error(`[LibraryItemController] Error reorganizing item: ${error.message}`)
+      return { success: false, error: error.message }
+    }
+  }
+
+  /**
+   * POST: /api/items/batch/reorganize-files
+   * Reorganize multiple library items' files into metadata-based directory structure
+   * Responds immediately, processes in background
+   *
+   * @this {import('../routers/ApiRouter')}
+   * @param {RequestWithUser} req - Request with libraryItemIds in body
+   * @param {Response} res
+   */
+  async batchReorganizeFiles(req, res) {
+    if (!req.user.canUpdate) {
+      Logger.warn(`[LibraryItemController] User "${req.user.username}" attempted to batch reorganize without permission`)
+      return res.sendStatus(403)
+    }
+
+    const { libraryItemIds } = req.body
+    if (!libraryItemIds?.length || !Array.isArray(libraryItemIds)) {
+      return res.status(400).send('Invalid request body')
+    }
+
+    // Fetch items
+    const itemsToReorganize = await Database.libraryItemModel.findAllExpandedWhere({
+      id: libraryItemIds
+    })
+
+    if (!itemsToReorganize.length) {
+      return res.sendStatus(404)
+    }
+
+    // Respond immediately - this is a long-running operation
+    res.sendStatus(200)
+
+    // Get the controller instance for calling helper methods
+    const controller = require('./LibraryItemController')
+
+    // Process in background
+    Logger.info(`[LibraryItemController] Starting batch reorganize for ${itemsToReorganize.length} items`)
+    let successCount = 0
+    let errorCount = 0
+    const errors = []
+
+    for (const libraryItem of itemsToReorganize) {
+      // Get the controller instance to call helper methods
+      const result = await controller.reorganizeFilesForItem(libraryItem)
+      if (result.success) {
+        successCount++
+        Logger.info(`[LibraryItemController] Successfully reorganized: ${libraryItem.media.title}`)
+      } else {
+        errorCount++
+        errors.push({ id: libraryItem.id, title: libraryItem.media.title, error: result.error })
+        Logger.error(`[LibraryItemController] Failed to reorganize ${libraryItem.media.title}: ${result.error}`)
+      }
+    }
+
+    Logger.info(`[LibraryItemController] Batch reorganize complete: ${successCount} succeeded, ${errorCount} failed`)
+
+    // Notify user of completion
+    SocketAuthority.clientEmitter(req.user.id, 'batch_reorganize_complete', {
+      successCount,
+      errorCount,
+      errors,
+      total: itemsToReorganize.length
+    })
+  }
+
+
+
   async middleware(req, res, next) {
     req.libraryItem = await Database.libraryItemModel.getExpandedById(req.params.id)
     if (!req.libraryItem?.media) return res.sendStatus(404)

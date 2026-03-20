@@ -1080,5 +1080,12 @@
   "ToastUserPasswordChangeSuccess": "পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে",
   "ToastUserPasswordMismatch": "পাসওয়ার্ড মিলছে না",
   "ToastUserPasswordMustChange": "নতুন পাসওয়ার্ড পুরানো পাসওয়ার্ডের সাথে মিলতে পারবে না",
-  "ToastUserRootRequireName": "একটি রুট ব্যবহারকারীর নাম লিখতে হবে"
+  "ToastUserRootRequireName": "একটি রুট ব্যবহারকারীর নাম লিখতে হবে",
+  "ButtonReorganizeFiles": "Reorganize Files",
+  "LabelToolsReorganizeFiles": "Reorganize Files",
+  "LabelToolsReorganizeFilesDescription": "Move all files to a directory structure based on item metadata (author/series/title for books, title for podcasts)",
+  "MessageBatchReorganizeStarted": "Reorganizing files for {0} items in background...",
+  "MessageBatchReorganizeSuccess": "{0} items reorganized successfully",
+  "MessageBatchReorganizePartial": "{0} items reorganized, {1} failed",
+  "LabelPreview": "Preview"
 }

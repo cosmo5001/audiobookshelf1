@@ -104,6 +104,7 @@ class ApiRouter {
     this.router.post('/items/batch/get', LibraryItemController.batchGet.bind(this))
     this.router.post('/items/batch/quickmatch', LibraryItemController.batchQuickMatch.bind(this))
     this.router.post('/items/batch/scan', LibraryItemController.batchScan.bind(this))
+    this.router.post('/items/batch/reorganize-files', LibraryItemController.batchReorganizeFiles.bind(this))
 
     this.router.get('/items/:id', LibraryItemController.middleware.bind(this), LibraryItemController.findOne.bind(this))
     this.router.delete('/items/:id', LibraryItemController.middleware.bind(this), LibraryItemController.delete.bind(this))
@@ -117,6 +118,7 @@ class ApiRouter {
     this.router.post('/items/:id/play', LibraryItemController.middleware.bind(this), LibraryItemController.startPlaybackSession.bind(this))
     this.router.post('/items/:id/play/:episodeId', LibraryItemController.middleware.bind(this), LibraryItemController.startEpisodePlaybackSession.bind(this))
     this.router.patch('/items/:id/tracks', LibraryItemController.middleware.bind(this), LibraryItemController.updateTracks.bind(this))
+    this.router.post('/items/:id/reorganize-files', LibraryItemController.middleware.bind(this), LibraryItemController.reorganizeFiles.bind(this))
     this.router.post('/items/:id/scan', LibraryItemController.middleware.bind(this), LibraryItemController.scan.bind(this))
     this.router.get('/items/:id/metadata-object', LibraryItemController.middleware.bind(this), LibraryItemController.getMetadataObject.bind(this))
     this.router.post('/items/:id/chapters', LibraryItemController.middleware.bind(this), LibraryItemController.updateMediaChapters.bind(this))

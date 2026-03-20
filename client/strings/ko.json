@@ -1161,5 +1161,12 @@
   "TooltipLockChapter": "장 잠금(범위를 위해 Shift+클릭)",
   "TooltipSubtractOneSecond": "1초 빼기",
   "TooltipUnlockAllChapters": "모든 챕터 잠금 해제",
-  "TooltipUnlockChapter": "챕터 잠금 해제(범위를 보려면 Shift+클릭)"
+  "TooltipUnlockChapter": "챕터 잠금 해제(범위를 보려면 Shift+클릭)",
+  "ButtonReorganizeFiles": "Reorganize Files",
+  "LabelToolsReorganizeFiles": "Reorganize Files",
+  "LabelToolsReorganizeFilesDescription": "Move all files to a directory structure based on item metadata (author/series/title for books, title for podcasts)",
+  "MessageBatchReorganizeStarted": "Reorganizing files for {0} items in background...",
+  "MessageBatchReorganizeSuccess": "{0} items reorganized successfully",
+  "MessageBatchReorganizePartial": "{0} items reorganized, {1} failed",
+  "LabelPreview": "Preview"
 }

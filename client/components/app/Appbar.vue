@@ -180,6 +180,13 @@ export default {
         action: 'rescan'
       })
 
+      if (this.userCanUpdate) {
+        options.push({
+          text: this.$strings.ButtonReorganizeFiles,
+          action: 'reorganize'
+        })
+      }
+
       // The limit of 50 is introduced because of the URL length. Each id has 36 chars, so 36 * 40 = 1440
       // + 40 , separators = 1480 chars + base path 280 chars = 1760 chars. This keeps the URL under 2000 chars even with longer domains
       if (this.selectedMediaItems.length <= 40) {
@@ -225,6 +232,8 @@ export default {
         this.batchAutoMatchClick()
       } else if (action === 'rescan') {
         this.batchRescan()
+      } else if (action === 'reorganize') {
+        this.batchReorganizeClick()
       } else if (action === 'download') {
         this.batchDownload()
       }
@@ -367,6 +376,9 @@ export default {
     },
     batchEditClick() {
       this.$router.push('/batch')
+    },
+    batchReorganizeClick() {
+      this.$store.commit('globals/setShowBatchReorganizeModal', true)
     },
     batchAddToCollectionClick() {
       this.$store.commit('globals/setShowBatchCollectionsModal', true)

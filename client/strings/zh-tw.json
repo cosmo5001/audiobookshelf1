@@ -755,5 +755,12 @@
   "ToastSocketDisconnected": "網路已斷開",
   "ToastSocketFailedToConnect": "網路連接失敗",
   "ToastUserDeleteFailed": "刪除使用者失敗",
-  "ToastUserDeleteSuccess": "使用者已刪除"
+  "ToastUserDeleteSuccess": "使用者已刪除",
+  "ButtonReorganizeFiles": "Reorganize Files",
+  "LabelToolsReorganizeFiles": "Reorganize Files",
+  "LabelToolsReorganizeFilesDescription": "Move all files to a directory structure based on item metadata (author/series/title for books, title for podcasts)",
+  "MessageBatchReorganizeStarted": "Reorganizing files for {0} items in background...",
+  "MessageBatchReorganizeSuccess": "{0} items reorganized successfully",
+  "MessageBatchReorganizePartial": "{0} items reorganized, {1} failed",
+  "LabelPreview": "Preview"
 }

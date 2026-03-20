@@ -946,5 +946,12 @@
   "ToastSocketDisconnected": "קצה תקשורת נותק",
   "ToastSocketFailedToConnect": "התחברות קצה התקשורת נכשלה",
   "ToastUserDeleteFailed": "מחיקת המשתמש נכשלה",
-  "ToastUserDeleteSuccess": "המשתמש נמחק בהצלחה"
+  "ToastUserDeleteSuccess": "המשתמש נמחק בהצלחה",
+  "ButtonReorganizeFiles": "Reorganize Files",
+  "LabelToolsReorganizeFiles": "Reorganize Files",
+  "LabelToolsReorganizeFilesDescription": "Move all files to a directory structure based on item metadata (author/series/title for books, title for podcasts)",
+  "MessageBatchReorganizeStarted": "Reorganizing files for {0} items in background...",
+  "MessageBatchReorganizeSuccess": "{0} items reorganized successfully",
+  "MessageBatchReorganizePartial": "{0} items reorganized, {1} failed",
+  "LabelPreview": "Preview"
 }

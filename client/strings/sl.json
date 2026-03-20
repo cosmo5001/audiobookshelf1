@@ -1161,5 +1161,12 @@
   "TooltipLockChapter": "Zakleni poglavje (Shift+klik za obseg)",
   "TooltipSubtractOneSecond": "Odštej 1 sekundo",
   "TooltipUnlockAllChapters": "Odkleni vsa poglavja",
-  "TooltipUnlockChapter": "Odkleni poglavje (Shift+klik za obseg)"
+  "TooltipUnlockChapter": "Odkleni poglavje (Shift+klik za obseg)",
+  "ButtonReorganizeFiles": "Reorganize Files",
+  "LabelToolsReorganizeFiles": "Reorganize Files",
+  "LabelToolsReorganizeFilesDescription": "Move all files to a directory structure based on item metadata (author/series/title for books, title for podcasts)",
+  "MessageBatchReorganizeStarted": "Reorganizing files for {0} items in background...",
+  "MessageBatchReorganizeSuccess": "{0} items reorganized successfully",
+  "MessageBatchReorganizePartial": "{0} items reorganized, {1} failed",
+  "LabelPreview": "Preview"
 }

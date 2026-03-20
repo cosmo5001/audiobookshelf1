@@ -194,5 +194,12 @@
   "LabelPodcastSearchRegion": "પોડકાસ્ટ શોધ પ્રદેશ",
   "LabelSettingsPreferMatchedMetadataHelp": "Matched data will overide item details when using Quick Match. By default Quick Match will only fill in missing details.",
   "MessageBookshelfNoResultsForFilter": "No Results for filter \"{0}: {1}\"",
-  "ToastSendEbookToDeviceFailed": "Failed to Send Ebook to device"
+  "ToastSendEbookToDeviceFailed": "Failed to Send Ebook to device",
+  "ButtonReorganizeFiles": "Reorganize Files",
+  "LabelToolsReorganizeFiles": "Reorganize Files",
+  "LabelToolsReorganizeFilesDescription": "Move all files to a directory structure based on item metadata (author/series/title for books, title for podcasts)",
+  "MessageBatchReorganizeStarted": "Reorganizing files for {0} items in background...",
+  "MessageBatchReorganizeSuccess": "{0} items reorganized successfully",
+  "MessageBatchReorganizePartial": "{0} items reorganized, {1} failed",
+  "LabelPreview": "Preview"
 }

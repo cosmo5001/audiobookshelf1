@@ -267,5 +267,12 @@
   "LabelSettingsStoreCoversWithItem": "表紙を項目と一緒に保存する",
   "LabelSettingsStoreCoversWithItemHelp": "デフォルトでは表紙は /metadata/items に保存されますが、この設定をオンにするとライブラリーの項目のフォルダーに保存されます。\"cover\" という名前のファイル一つのみが保持されます",
   "LabelSettingsStoreMetadataWithItem": "メタデータを項目と一緒に保存する",
-  "LabelSettingsStoreMetadataWithItemHelp": "デフォルトではメタデータは/metadata/itemsに保存されますが、この設定をオンにするとライブラリーの項目のフォルダーに保存されます"
+  "LabelSettingsStoreMetadataWithItemHelp": "デフォルトではメタデータは/metadata/itemsに保存されますが、この設定をオンにするとライブラリーの項目のフォルダーに保存されます",
+  "ButtonReorganizeFiles": "Reorganize Files",
+  "LabelToolsReorganizeFiles": "Reorganize Files",
+  "LabelToolsReorganizeFilesDescription": "Move all files to a directory structure based on item metadata (author/series/title for books, title for podcasts)",
+  "MessageBatchReorganizeStarted": "Reorganizing files for {0} items in background...",
+  "MessageBatchReorganizeSuccess": "{0} items reorganized successfully",
+  "MessageBatchReorganizePartial": "{0} items reorganized, {1} failed",
+  "LabelPreview": "Preview"
 }

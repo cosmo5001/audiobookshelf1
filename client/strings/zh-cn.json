@@ -1161,5 +1161,12 @@
   "TooltipLockChapter": "锁定章节 (按住 Shift再点击, 可进行范围选择)",
   "TooltipSubtractOneSecond": "减 1 秒",
   "TooltipUnlockAllChapters": "解锁所有章节",
-  "TooltipUnlockChapter": "解锁章节 (按住 Shift再点击, 可进行范围选择)"
+  "TooltipUnlockChapter": "解锁章节 (按住 Shift再点击, 可进行范围选择)",
+  "ButtonReorganizeFiles": "Reorganize Files",
+  "LabelToolsReorganizeFiles": "Reorganize Files",
+  "LabelToolsReorganizeFilesDescription": "Move all files to a directory structure based on item metadata (author/series/title for books, title for podcasts)",
+  "MessageBatchReorganizeStarted": "Reorganizing files for {0} items in background...",
+  "MessageBatchReorganizeSuccess": "{0} items reorganized successfully",
+  "MessageBatchReorganizePartial": "{0} items reorganized, {1} failed",
+  "LabelPreview": "Preview"
 }

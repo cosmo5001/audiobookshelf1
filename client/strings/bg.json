@@ -1026,5 +1026,12 @@
   "ToastSortingPrefixesEmptyError": "Трябва да има поне 1 префикс за сортиране",
   "ToastSortingPrefixesUpdateSuccess": "Префиксите за сортиране са актуализирани ({0} елемента)",
   "ToastUserDeleteFailed": "Неуспешно изтриване на потребител",
-  "ToastUserDeleteSuccess": "Потребителят е изтрит"
+  "ToastUserDeleteSuccess": "Потребителят е изтрит",
+  "ButtonReorganizeFiles": "Reorganize Files",
+  "LabelToolsReorganizeFiles": "Reorganize Files",
+  "LabelToolsReorganizeFilesDescription": "Move all files to a directory structure based on item metadata (author/series/title for books, title for podcasts)",
+  "MessageBatchReorganizeStarted": "Reorganizing files for {0} items in background...",
+  "MessageBatchReorganizeSuccess": "{0} items reorganized successfully",
+  "MessageBatchReorganizePartial": "{0} items reorganized, {1} failed",
+  "LabelPreview": "Preview"
 }

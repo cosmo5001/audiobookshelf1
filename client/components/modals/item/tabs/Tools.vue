@@ -49,6 +49,20 @@
     </div>
 
     <p v-if="!mediaTracks.length" class="text-lg text-center my-8">{{ $strings.MessageNoAudioTracks }}</p>
+
+    <!-- Reorganize Files -->
+    <div class="w-full border border-black-200 p-4 my-8">
+      <div class="flex items-center">
+        <div>
+          <p class="text-lg">{{ $strings.LabelToolsReorganizeFiles }}</p>
+          <p class="max-w-sm text-sm pt-2 text-gray-300">{{ $strings.LabelToolsReorganizeFilesDescription }}</p>
+        </div>
+        <div class="grow" />
+        <div>
+          <ui-btn :loading="isReorganizing" color="bg-primary" @click.stop="reorganizeFiles">{{ $strings.ButtonReorganizeFiles }}</ui-btn>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -62,7 +76,9 @@ export default {
     }
   },
   data() {
-    return {}
+    return {
+      isReorganizing: false
+    }
   },
   computed: {
     libraryItemId() {
@@ -123,6 +139,38 @@ export default {
         type: 'yesNo'
       }
       this.$store.commit('globals/setConfirmPrompt', payload)
+    },
+    async reorganizeFiles() {
+      const title = this.libraryItem?.media?.metadata?.title || this.libraryItem?.media?.title || this.libraryItem?.title || 'this item'
+      const payload = {
+        message: `Are you sure you want to reorganize the files for "${title}"? Files will be moved to a directory structure based on metadata.`,
+        callback: (confirmed) => {
+          if (confirmed) {
+            this.performReorganize()
+          }
+        },
+        type: 'yesNo'
+      }
+      this.$store.commit('globals/setConfirmPrompt', payload)
+    },
+    async performReorganize() {
+      this.isReorganizing = true
+      try {
+        const response = await this.$axios.$post(`/api/items/${this.libraryItemId}/reorganize-files`)
+        console.log('Reorganize response:', response)
+        this.$toast.success('Files reorganized successfully')
+      } catch (error) {
+        console.error('Reorganize error:', error)
+        let errorMsg = 'Failed to reorganize files'
+        if (error.response?.data) {
+          errorMsg = error.response.data
+        } else if (error.message) {
+          errorMsg = error.message
+        }
+        this.$toast.error(errorMsg)
+      } finally {
+        this.isReorganizing = false
+      }
     }
   }
 }
