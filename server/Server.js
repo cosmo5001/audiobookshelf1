@@ -38,6 +38,7 @@ const CronManager = require('./managers/CronManager')
 const ApiCacheManager = require('./managers/ApiCacheManager')
 const BinaryManager = require('./managers/BinaryManager')
 const ShareManager = require('./managers/ShareManager')
+const AutoImportManager = require('./managers/AutoImportManager')
 const LibraryScanner = require('./scanner/LibraryScanner')
 
 //Import the main Passport and Express-Session library
@@ -181,6 +182,11 @@ class Server {
       Watcher.on('scanFilesChanged', (pendingFileUpdates, pendingTask) => {
         LibraryScanner.scanFilesChanged(pendingFileUpdates, pendingTask)
       })
+    }
+
+    // Initialize auto-import folder watchers
+    for (const library of libraries) {
+      await AutoImportManager.watchAutoImportFolders(library)
     }
   }
 

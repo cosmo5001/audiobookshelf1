@@ -10,6 +10,7 @@ const scanUtils = require('../utils/scandir')
 const { LogLevel, ScanResult } = require('../utils/constants')
 const libraryFilters = require('../utils/queries/libraryFilters')
 const TaskManager = require('../managers/TaskManager')
+const AutoImportManager = require('../managers/AutoImportManager')
 const LibraryItemScanner = require('./LibraryItemScanner')
 const LibraryScan = require('./LibraryScan')
 const LibraryItemScanData = require('./LibraryItemScanData')
@@ -58,6 +59,9 @@ class LibraryScanner {
       Logger.warn(`[LibraryScanner] Library has no folders to scan "${library.name}"`)
       return
     }
+
+    // Reload library with auto-import folders
+    library = await Database.libraryModel.findByIdWithFolders(library.id)
 
     const metadataPrecedence = library.settings.metadataPrecedence || Database.libraryModel.defaultMetadataPrecedence
     if (library.isBook && metadataPrecedence.join() !== library.lastScanMetadataPrecedence.join()) {
@@ -144,6 +148,12 @@ class LibraryScanner {
     // Make sure library filter data is set
     //   this is used to check for existing authors & series
     await libraryFilters.getFilterData(libraryScan.libraryMediaType, libraryScan.libraryId)
+
+    // Scan auto-import folders and move files before scanning library folders
+    libraryScan.addLog(LogLevel.INFO, `Scanning auto-import folders`)
+    await AutoImportManager.scanAutoImportFolders(libraryScan.library, libraryScan)
+
+    if (this.shouldCancelScan(libraryScan)) return true
 
     /** @type {LibraryItemScanData[]} */
     let libraryItemDataFound = []

@@ -89,6 +89,15 @@
           </div>
         </div>
       </div>
+      <div class="p-2 w-full flex items-center">
+        <ui-toggle-switch v-model="autoImportEnrichMetadata" size="sm" @input="formUpdated" />
+        <ui-tooltip text="Automatically fetch metadata from the library's default metadata provider for items imported from auto-import folders">
+          <p class="pl-4 text-sm">
+            Auto-Import Enrich Metadata
+            <span class="material-symbols icon-text text-sm">info</span>
+          </p>
+        </ui-tooltip>
+      </div>
     </div>
   </div>
 </template>
@@ -112,6 +121,7 @@ export default {
       epubsAllowScriptedContent: false,
       hideSingleBookSeries: false,
       onlyShowLaterBooksInContinueSeries: false,
+      autoImportEnrichMetadata: false,
       podcastSearchRegion: 'us',
       markAsFinishedWhen: 'timeRemaining',
       markAsFinishedValue: 10
@@ -170,6 +180,7 @@ export default {
           epubsAllowScriptedContent: !!this.epubsAllowScriptedContent,
           hideSingleBookSeries: !!this.hideSingleBookSeries,
           onlyShowLaterBooksInContinueSeries: !!this.onlyShowLaterBooksInContinueSeries,
+          autoImportEnrichMetadata: !!this.autoImportEnrichMetadata,
           podcastSearchRegion: this.podcastSearchRegion,
           markAsFinishedTimeRemaining: markAsFinishedTimeRemaining,
           markAsFinishedPercentComplete: markAsFinishedPercentComplete
@@ -188,6 +199,7 @@ export default {
       this.epubsAllowScriptedContent = !!this.librarySettings.epubsAllowScriptedContent
       this.hideSingleBookSeries = !!this.librarySettings.hideSingleBookSeries
       this.onlyShowLaterBooksInContinueSeries = !!this.librarySettings.onlyShowLaterBooksInContinueSeries
+      this.autoImportEnrichMetadata = !!this.librarySettings.autoImportEnrichMetadata
       this.podcastSearchRegion = this.librarySettings.podcastSearchRegion || 'us'
       this.markAsFinishedWhen = this.librarySettings.markAsFinishedTimeRemaining ? 'timeRemaining' : 'percentComplete'
       if (!this.librarySettings.markAsFinishedTimeRemaining && !this.librarySettings.markAsFinishedPercentComplete) {

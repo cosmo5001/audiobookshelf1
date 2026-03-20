@@ -14,6 +14,7 @@ const Logger = require('../Logger')
  * @property {string[]} metadataPrecedence
  * @property {number} markAsFinishedTimeRemaining Time remaining in seconds to mark as finished. (defaults to 10s)
  * @property {number} markAsFinishedPercentComplete Percent complete to mark as finished (0-100). If this is set it will be used over markAsFinishedTimeRemaining.
+ * @property {boolean} autoImportEnrichMetadata Automatically fetch metadata from provider for auto-imported items
  */
 
 class Library extends Model {
@@ -61,7 +62,8 @@ class Library extends Model {
         autoScanCronExpression: null,
         podcastSearchRegion: 'us',
         markAsFinishedPercentComplete: null,
-        markAsFinishedTimeRemaining: 10
+        markAsFinishedTimeRemaining: 10,
+        autoImportEnrichMetadata: false
       }
     } else {
       return {
@@ -76,7 +78,8 @@ class Library extends Model {
         onlyShowLaterBooksInContinueSeries: false,
         metadataPrecedence: this.defaultMetadataPrecedence,
         markAsFinishedPercentComplete: null,
-        markAsFinishedTimeRemaining: 10
+        markAsFinishedTimeRemaining: 10,
+        autoImportEnrichMetadata: false
       }
     }
   }
@@ -91,7 +94,13 @@ class Library extends Model {
    */
   static getAllWithFolders() {
     return this.findAll({
-      include: this.sequelize.models.libraryFolder,
+      include: [
+        this.sequelize.models.libraryFolder,
+        {
+          model: this.sequelize.models.autoImportFolder,
+          as: 'autoImportFolders'
+        }
+      ],
       order: [['displayOrder', 'ASC']]
     })
   }
@@ -103,7 +112,13 @@ class Library extends Model {
    */
   static findByIdWithFolders(libraryId) {
     return this.findByPk(libraryId, {
-      include: this.sequelize.models.libraryFolder
+      include: [
+        this.sequelize.models.libraryFolder,
+        {
+          model: this.sequelize.models.autoImportFolder,
+          as: 'autoImportFolders'
+        }
+      ]
     })
   }
 
@@ -204,6 +219,7 @@ class Library extends Model {
       id: this.id,
       name: this.name,
       folders: (this.libraryFolders || []).map((f) => f.toOldJSON()),
+      autoImportFolders: (this.autoImportFolders || []).map((f) => f.toOldJSON()),
       displayOrder: this.displayOrder,
       icon: this.icon,
       mediaType: this.mediaType,

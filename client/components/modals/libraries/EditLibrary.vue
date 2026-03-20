@@ -30,6 +30,21 @@
 
         <ui-btn class="w-full mt-2" color="bg-primary" @click="browseForFolder">{{ $strings.ButtonBrowseForFolder }}</ui-btn>
       </div>
+
+      <div class="folders-container overflow-y-auto w-full py-2 mb-2">
+        <p class="px-1 text-sm font-semibold">Auto-Import Folders</p>
+        <div v-for="(folder, index) in autoImportFolders" :key="`auto-${index}`" class="w-full flex items-center py-1 px-2">
+          <span class="material-symbols fill mr-2 text-blue-200" style="font-size: 1.2rem">folder_special</span>
+          <span class="w-full text-sm">{{ folder.path || folder.fullPath }}</span>
+          <span class="material-symbols text-2xl ml-2 cursor-pointer hover:text-error" @click="removeAutoImportFolder(folder)">close</span>
+        </div>
+        <div class="flex py-1 px-2 items-center w-full">
+          <span class="material-symbols fill mr-2 text-blue-200" style="font-size: 1.2rem">folder_special</span>
+          <ui-editable-text ref="newAutoImportFolderInput" v-model="newAutoImportFolderPath" :placeholder="$strings.PlaceholderNewFolderPath" type="text" class="w-full" @blur="newAutoImportFolderInputBlurred" />
+        </div>
+
+        <ui-btn class="w-full mt-2" color="bg-primary" @click="browseForAutoImportFolder">Browse for Auto-Import Folder</ui-btn>
+      </div>
     </div>
     <modals-libraries-lazy-folder-chooser v-else :paths="folderPaths" @back="showDirectoryPicker = false" @select="selectFolder" />
   </div>
@@ -51,8 +66,11 @@ export default {
       provider: 'google',
       icon: '',
       folders: [],
+      autoImportFolders: [],
       showDirectoryPicker: false,
+      browsingFolderType: 'library', // 'library' or 'autoImport'
       newFolderPath: '',
+      newAutoImportFolderPath: '',
       mediaType: null
     }
   },
@@ -92,6 +110,11 @@ export default {
       }
     },
     browseForFolder() {
+      this.browsingFolderType = 'library'
+      this.showDirectoryPicker = true
+    },
+    browseForAutoImportFolder() {
+      this.browsingFolderType = 'autoImport'
       this.showDirectoryPicker = true
     },
     getLibraryData() {
@@ -99,6 +122,7 @@ export default {
         name: this.name,
         provider: this.provider,
         folders: this.folders,
+        autoImportFolders: this.autoImportFolders,
         icon: this.icon,
         mediaType: this.mediaType
       }
@@ -131,23 +155,41 @@ export default {
       this.formUpdated()
     },
     selectFolder(fullPath) {
-      this.folders.push({ fullPath })
+      if (this.browsingFolderType === 'autoImport') {
+        this.autoImportFolders.push({ fullPath })
+      } else {
+        this.folders.push({ fullPath })
+      }
       this.showDirectoryPicker = false
+      this.browsingFolderType = 'library'
       this.formUpdated()
     },
     removeFolder(folder) {
       this.folders = this.folders.filter((f) => f.fullPath !== folder.fullPath)
       this.formUpdated()
     },
+    newAutoImportFolderInputBlurred() {
+      if (this.newAutoImportFolderPath) {
+        this.autoImportFolders.push({ fullPath: this.newAutoImportFolderPath })
+        this.newAutoImportFolderPath = ''
+        this.formUpdated()
+      }
+    },
+    removeAutoImportFolder(folder) {
+      this.autoImportFolders = this.autoImportFolders.filter((f) => f.fullPath !== folder.fullPath)
+      this.formUpdated()
+    },
     backArrowPress() {
       if (this.showDirectoryPicker) {
         this.showDirectoryPicker = false
+        this.browsingFolderType = 'library'
       }
     },
     init() {
       this.name = this.library ? this.library.name : ''
       this.provider = this.library ? this.library.provider : 'google'
       this.folders = this.library ? this.library.folders.map((p) => ({ ...p })) : []
+      this.autoImportFolders = this.library ? (this.library.autoImportFolders || []).map((p) => ({ ...p })) : []
       this.icon = this.library ? this.library.icon : 'default'
       this.mediaType = this.library ? this.library.mediaType : 'book'
 

@@ -62,6 +62,11 @@ class Database {
     return this.models.libraryFolder
   }
 
+  /** @type {typeof import('./models/AutoImportFolder')} */
+  get autoImportFolderModel() {
+    return this.models.autoImportFolder
+  }
+
   /** @type {typeof import('./models/Author')} */
   get authorModel() {
     return this.models.author
@@ -325,6 +330,7 @@ class Database {
     require('./models/ApiKey').init(this.sequelize)
     require('./models/Library').init(this.sequelize)
     require('./models/LibraryFolder').init(this.sequelize)
+    require('./models/AutoImportFolder').init(this.sequelize)
     require('./models/Book').init(this.sequelize)
     require('./models/Podcast').init(this.sequelize)
     require('./models/PodcastEpisode').init(this.sequelize)

@@ -110,13 +110,19 @@ export default {
       this.selectedTab = tab
     },
     updateLibrary(library) {
+      // Preserve autoImportFolders if not provided by the tab component
+      const preservedAutoImportFolders = this.libraryCopy.autoImportFolders
       this.mapLibraryToCopy(library)
+      if (library.autoImportFolders === undefined && preservedAutoImportFolders) {
+        this.libraryCopy.autoImportFolders = preservedAutoImportFolders
+      }
     },
     getNewLibraryData() {
       return {
         name: '',
         provider: 'google',
         folders: [],
+        autoImportFolders: [],
         icon: 'database',
         mediaType: 'book',
         settings: {
@@ -145,6 +151,8 @@ export default {
         if (library[key] !== undefined) {
           if (key === 'folders') {
             this.libraryCopy.folders = library.folders.map((f) => ({ ...f })).filter((f) => !!f.fullPath?.trim())
+          } else if (key === 'autoImportFolders') {
+            this.libraryCopy.autoImportFolders = library.autoImportFolders ? library.autoImportFolders.map((f) => ({ ...f })) : []
           } else if (key === 'settings') {
             for (const settingKey in library.settings) {
               this.libraryCopy.settings[settingKey] = library.settings[settingKey]
@@ -189,6 +197,12 @@ export default {
         if (key === 'folders') {
           if (this.libraryCopy.folders.map((f) => f.fullPath).join(',') !== this.library.folders.map((f) => f.fullPath).join(',')) {
             updatePayload.folders = [...this.libraryCopy.folders]
+          }
+        } else if (key === 'autoImportFolders') {
+          // Only include autoImportFolders if explicitly changed by user
+          // This prevents accidental deletion when updating other library properties
+          if (this.libraryCopy.autoImportFolders && JSON.stringify(this.libraryCopy.autoImportFolders) !== JSON.stringify(this.library.autoImportFolders || [])) {
+            updatePayload.autoImportFolders = [...this.libraryCopy.autoImportFolders]
           }
         } else if (key === 'settings') {
           for (const settingsKey in this.libraryCopy.settings) {

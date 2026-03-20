@@ -19,6 +19,7 @@ const Scanner = require('../scanner/Scanner')
 const Database = require('../Database')
 const Watcher = require('../Watcher')
 const RssFeedManager = require('../managers/RssFeedManager')
+const AutoImportManager = require('../managers/AutoImportManager')
 
 const libraryFilters = require('../utils/queries/libraryFilters')
 const libraryItemsPodcastFilters = require('../utils/queries/libraryItemsPodcastFilters')
@@ -477,6 +478,84 @@ class LibraryController {
           hasFolderUpdates = true
         }
       }
+    }
+
+    let hasAutoImportUpdates = false
+    // Handle auto import folders - only if explicitly provided in request
+    if (Array.isArray(req.body.autoImportFolders)) {
+      Logger.debug(`[LibraryController] Processing autoImportFolders: ${JSON.stringify(req.body.autoImportFolders)}`)
+      Logger.debug(`[LibraryController] Current autoImportFolders in library: ${JSON.stringify(req.library.autoImportFolders?.map(f => ({ id: f.id, path: f.path })))}`)
+      const newAutoImportPaths = []
+      req.body.autoImportFolders = req.body.autoImportFolders.map((f) => {
+        if (!f.id) {
+          const path = f.fullPath || f.path
+          f.path = fileUtils.filePathToPOSIX(Path.resolve(path))
+          newAutoImportPaths.push(f.path)
+        }
+        return f
+      })
+      
+      // Create new auto-import folders
+      for (const path of newAutoImportPaths) {
+        // Check if a folder with this path already exists for this library
+        const existingFolder = await Database.autoImportFolderModel.findOne({
+          where: {
+            path,
+            libraryId: req.library.id
+          }
+        })
+        
+        if (existingFolder) {
+          Logger.debug(`[LibraryController] Auto-import folder "${path}" already exists for library "${req.library.name}"`)
+          continue
+        }
+        
+        const pathExists = await fs.pathExists(path)
+        if (!pathExists) {
+          const success = await fs
+            .ensureDir(path)
+            .then(() => true)
+            .catch((error) => {
+              Logger.error(`[LibraryController] Failed to ensure auto-import folder dir "${path}"`, error)
+              return false
+            })
+          if (!success) {
+            Logger.error(`[LibraryController] Invalid auto-import folder directory "${path}"`)
+            return res.status(400).send(`Invalid auto-import folder directory "${path}"`)
+          }
+        }
+        // Create auto-import folder
+        const autoImportFolder = await Database.autoImportFolderModel.create({
+          path,
+          libraryId: req.library.id
+        })
+        Logger.info(`[LibraryController] Created auto-import folder "${autoImportFolder.path}" for library "${req.library.name}"`)
+        hasAutoImportUpdates = true
+      }
+
+      // Only remove folders if there are existing folders and the user is managing them
+      // Check for folders that should be removed (they exist but are NOT in the new request)
+      const incomingFolderIds = new Set(req.body.autoImportFolders.map(f => f.id).filter(id => !!id))
+      const incomingFolderPaths = new Set(req.body.autoImportFolders.map(f => f.path || f.fullPath).filter(p => !!p))
+      
+      if (req.library.autoImportFolders && req.library.autoImportFolders.length) {
+        for (const folder of req.library.autoImportFolders) {
+          const folderInRequest = incomingFolderIds.has(folder.id) || incomingFolderPaths.has(folder.path)
+          if (!folderInRequest) {
+            // Remove auto-import folder only if it existed before AND is not in the new request
+            await folder.destroy()
+            Logger.info(`[LibraryController] Removed auto-import folder "${folder.path}" from library "${req.library.name}"`)
+            hasAutoImportUpdates = true
+          }
+        }
+      }
+    }
+
+    if (hasAutoImportUpdates) {
+      req.library.autoImportFolders = await req.library.getAutoImportFolders()
+      Watcher.updateLibrary(req.library)
+      await AutoImportManager.watchAutoImportFolders(req.library)
+      hasUpdates = true
     }
 
     if (Object.keys(updatePayload).length) {
