@@ -1207,6 +1207,55 @@ class LibraryItemController {
 
       Logger.info(`[LibraryItemController] Reorganizing item ${itemId}`)
 
+      // Get library folder early for error directory path
+      const library = await Database.libraryModel.findByIdWithFolders(libraryId)
+      if (!library || !library.libraryFolders || !library.libraryFolders.length) {
+        return { success: false, error: 'Library not found' }
+      }
+
+      const libraryFolder = library.libraryFolders.find((f) => currentPath.startsWith(f.path))
+      if (!libraryFolder) {
+        return { success: false, error: 'Library folder not found' }
+      }
+
+      // Refresh metadata before reorganizing
+      let hasMatchWarning = false
+      Logger.info(`[LibraryItemController] Refreshing metadata for item ${itemId}`)
+      try {
+        const matchResult = await Scanner.quickMatchLibraryItem(this, libraryItem, {
+          overrideDetails: true
+        })
+        if (matchResult.updated) {
+          Logger.info(`[LibraryItemController] Metadata updated for item ${itemId}`)
+        } else if (matchResult.warning) {
+          hasMatchWarning = true
+          Logger.warn(`[LibraryItemController] Metadata match warning for item ${itemId}: ${matchResult.warning}`)
+        }
+      } catch (err) {
+        Logger.warn(`[LibraryItemController] Failed to refresh metadata for item ${itemId}: ${err.message}`)
+        // Continue anyway - use existing metadata
+      }
+
+      // If match failed, move to error directory
+      if (hasMatchWarning) {
+        try {
+          const errorDirPath = Path.join(libraryFolder.path, '__Reorganize_Errors')
+          await fs.ensureDir(errorDirPath)
+          
+          const errorPath = Path.join(errorDirPath, Path.basename(currentPath))
+          Logger.warn(`[LibraryItemController] Moving unmatched item to error directory: ${currentPath} -> ${errorPath}`)
+          await fs.move(currentPath, errorPath, { overwrite: false })
+          
+          // Update database
+          await Database.libraryItemModel.update({ path: errorPath }, { where: { id: itemId } })
+          Logger.info(`[LibraryItemController] Moved unmatched item ${itemId} to error directory`)
+          
+          return { success: true, warning: 'Item moved to error directory - no metadata match found' }
+        } catch (err) {
+          return { success: false, error: `Failed to move unmatched item to error directory: ${err.message}` }
+        }
+      }
+
       // Reload media with authors and series for books
       let media = libraryItem.media
       if (isBook) {
@@ -1236,27 +1285,19 @@ class LibraryItemController {
         return { success: false, error: 'Media not found' }
       }
 
-      // Get library folder
-      const library = await Database.libraryModel.findByIdWithFolders(libraryId)
-      if (!library || !library.libraryFolders || !library.libraryFolders.length) {
-        return { success: false, error: 'Library not found' }
-      }
-
-      const libraryFolder = library.libraryFolders.find((f) => currentPath.startsWith(f.path))
-      if (!libraryFolder) {
-        return { success: false, error: 'Library folder not found' }
-      }
-
       // Build new path
       const parts = []
       if (isPodcast) {
         parts.push(media.title)
       } else if (isBook) {
-        if (media.authorName) {
-          parts.push(media.authorName)
+        // Use only the first author
+        if (media.authors && media.authors.length > 0) {
+          parts.push(media.authors[0].name)
         }
         if (media.seriesName) {
-          parts.push(media.seriesName)
+          // Remove sequence number from series name (e.g., "Series Name #1" -> "Series Name")
+          const seriesNameWithoutSequence = media.seriesName.replace(/\s*#\d+$/, '')
+          parts.push(seriesNameWithoutSequence)
         }
         parts.push(media.title)
       }
@@ -1274,30 +1315,100 @@ class LibraryItemController {
           return { success: false, error: 'Current directory does not exist' }
         }
 
-        // Check if target already exists with different item
+        // Check if target path has conflicts
         const targetExists = await fs.pathExists(newPath)
         if (targetExists) {
+          // Check if this item already owns the target directory
           const existingItem = await Database.libraryItemModel.findOne({ where: { path: newPath } })
-          if (existingItem && existingItem.id !== itemId) {
-            return { success: false, error: 'Target directory already contains a different item' }
+          if (existingItem) {
+            if (existingItem.id === itemId) {
+              // Item already reorganized to this location - skip
+              Logger.info(`[LibraryItemController] Item ${itemId} already at target path, skipping`)
+              return { success: true }
+            } else {
+              // Different item owns this directory - move it to error directory
+              try {
+                const errorDirPath = Path.join(libraryFolder.path, '__Reorganize_Errors')
+                await fs.ensureDir(errorDirPath)
+                
+                const existingItemPath = existingItem.path
+                const errorPath = Path.join(errorDirPath, Path.basename(existingItemPath))
+                
+                Logger.warn(`[LibraryItemController] Moving conflicting item to error directory: ${existingItemPath} -> ${errorPath}`)
+                await fs.move(existingItemPath, errorPath, { overwrite: false })
+                
+                // Update the conflicting item's path in database
+                await Database.libraryItemModel.update({ path: errorPath }, { where: { id: existingItem.id } })
+                Logger.info(`[LibraryItemController] Moved conflicting item ${existingItem.id} to error directory`)
+              } catch (err) {
+                return { success: false, error: `Failed to move conflicting item: ${err.message}` }
+              }
+            }
+          }
+
+          // Target exists but isn't a registered item - check if it's empty
+          try {
+            const targetContents = await fs.readdir(newPath)
+            if (targetContents.length > 0) {
+              // Move conflicting directory to error directory
+              try {
+                const errorDirPath = Path.join(libraryFolder.path, '__Reorganize_Errors')
+                await fs.ensureDir(errorDirPath)
+                const errorPath = Path.join(errorDirPath, Path.basename(newPath) + '_conflict')
+                Logger.warn(`[LibraryItemController] Moving conflicting directory to error: ${newPath} -> ${errorPath}`)
+                await fs.move(newPath, errorPath, { overwrite: false })
+                Logger.info(`[LibraryItemController] Moved conflicting directory to error path`)
+              } catch (err) {
+                return { success: false, error: `Cannot handle conflicting directory: ${err.message}` }
+              }
+            }
+          } catch (err) {
+            return { success: false, error: `Cannot access target directory: ${err.message}` }
           }
         }
 
         // Create target directory
-        await fs.ensureDir(newPath)
+        try {
+          await fs.ensureDir(newPath)
+        } catch (err) {
+          return { success: false, error: `Cannot create target directory: ${err.message}` }
+        }
 
         // Read and move files
-        const files = await fs.readdir(currentPath)
-        Logger.info(`[LibraryItemController] Moving ${files.length} files for item ${itemId}`)
+        try {
+          const files = await fs.readdir(currentPath)
+          Logger.info(`[LibraryItemController] Moving ${files.length} files for item ${itemId}`)
 
-        for (const file of files) {
-          const src = Path.join(currentPath, file)
-          const dst = Path.join(newPath, file)
-          await fs.move(src, dst, { overwrite: true })
+          for (const file of files) {
+            const src = Path.join(currentPath, file)
+            const dst = Path.join(newPath, file)
+            try {
+              await fs.move(src, dst, { overwrite: true })
+            } catch (err) {
+              return { success: false, error: `Failed to move file ${file}: ${err.message}` }
+            }
+          }
+        } catch (err) {
+          return { success: false, error: `Failed to read source directory: ${err.message}` }
         }
 
         // Update database
-        await Database.libraryItemModel.update({ path: newPath }, { where: { id: itemId } })
+        try {
+          await Database.libraryItemModel.update({ path: newPath }, { where: { id: itemId } })
+        } catch (err) {
+          // Try to rollback files
+          try {
+            const movedFiles = await fs.readdir(newPath)
+            for (const file of movedFiles) {
+              const src = Path.join(newPath, file)
+              const dst = Path.join(currentPath, file)
+              await fs.move(src, dst, { overwrite: true })
+            }
+          } catch (rollbackErr) {
+            Logger.error(`[LibraryItemController] Failed to rollback files: ${rollbackErr.message}`)
+          }
+          return { success: false, error: `Database update failed: ${err.message}` }
+        }
 
         // Clean up old directory
         try {
@@ -1358,15 +1469,23 @@ class LibraryItemController {
     // Process in background
     Logger.info(`[LibraryItemController] Starting batch reorganize for ${itemsToReorganize.length} items`)
     let successCount = 0
+    let warningCount = 0
     let errorCount = 0
     const errors = []
+    const warnings = []
 
     for (const libraryItem of itemsToReorganize) {
       // Get the controller instance to call helper methods
       const result = await controller.reorganizeFilesForItem(libraryItem)
       if (result.success) {
-        successCount++
-        Logger.info(`[LibraryItemController] Successfully reorganized: ${libraryItem.media.title}`)
+        if (result.warning) {
+          warningCount++
+          warnings.push({ id: libraryItem.id, title: libraryItem.media.title, warning: result.warning })
+          Logger.warn(`[LibraryItemController] Reorganized with warning: ${libraryItem.media.title} - ${result.warning}`)
+        } else {
+          successCount++
+          Logger.info(`[LibraryItemController] Successfully reorganized: ${libraryItem.media.title}`)
+        }
       } else {
         errorCount++
         errors.push({ id: libraryItem.id, title: libraryItem.media.title, error: result.error })
@@ -1374,12 +1493,14 @@ class LibraryItemController {
       }
     }
 
-    Logger.info(`[LibraryItemController] Batch reorganize complete: ${successCount} succeeded, ${errorCount} failed`)
+    Logger.info(`[LibraryItemController] Batch reorganize complete: ${successCount} succeeded, ${warningCount} moved to error dir, ${errorCount} failed`)
 
     // Notify user of completion
     SocketAuthority.clientEmitter(req.user.id, 'batch_reorganize_complete', {
       successCount,
+      warningCount,
       errorCount,
+      warnings,
       errors,
       total: itemsToReorganize.length
     })

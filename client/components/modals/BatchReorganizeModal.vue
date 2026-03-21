@@ -79,8 +79,16 @@ export default {
           newPath = item.media?.metadata?.title || 'Unknown Podcast'
         } else {
           const parts = []
-          if (item.media?.metadata?.authorName) parts.push(item.media.metadata.authorName)
-          if (item.media?.metadata?.seriesName) parts.push(item.media.metadata.seriesName)
+          // Use only the first author
+          const authors = item.media?.metadata?.authors
+          if (authors && authors.length > 0) {
+            parts.push(authors[0].name)
+          }
+          if (item.media?.metadata?.seriesName) {
+            // Remove sequence number from series name (e.g., "Series Name #1" -> "Series Name")
+            const seriesNameWithoutSequence = item.media.metadata.seriesName.replace(/\s*#\d+$/, '')
+            parts.push(seriesNameWithoutSequence)
+          }
           if (item.media?.metadata?.title) parts.push(item.media.metadata.title)
           newPath = parts.join(' / ') || 'Unknown Item'
         }
@@ -140,10 +148,15 @@ export default {
       this.processing = false
       this.$store.commit('setProcessingBatch', false)
 
-      if (result.successCount > 0 && result.errorCount === 0) {
+      if (result.successCount > 0 && result.warningCount === 0 && result.errorCount === 0) {
         this.$toast.success(this.$getString('MessageBatchReorganizeSuccess', [result.successCount]))
-      } else if (result.successCount > 0 && result.errorCount > 0) {
-        this.$toast.warning(this.$getString('MessageBatchReorganizePartial', [result.successCount, result.errorCount]))
+      } else if ((result.successCount > 0 || result.warningCount > 0) && result.errorCount === 0) {
+        const message = result.warningCount > 0 
+          ? this.$getString('MessageBatchReorganizePartial', [result.successCount, result.warningCount])
+          : this.$getString('MessageBatchReorganizeSuccess', [result.successCount])
+        this.$toast.warning(message)
+      } else if (result.errorCount > 0) {
+        this.$toast.error(this.$getString('MessageBatchReorganizePartial', [result.successCount + result.warningCount, result.errorCount]))
       } else {
         this.$toast.error('Failed to reorganize files')
       }
